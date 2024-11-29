@@ -13,3 +13,16 @@ Project Structure
 -Server: Manages connections, handles client messages, and broadcasts drawing data to all connected clients.
 -Client: A JavaFX-based GUI that allows users to draw on the whiteboard and communicate with the server.
 -Shared Whiteboard: All clients can see each other's drawing actions in real time.
+
+How the Application Works
+Server Side:
+
+-The WhiteboardServer listens for incoming client connections.
+-Each new client creates a ClientHandler thread that handles communication between the server and the client.
+-When the server receives drawing data from a client (e.g., coordinates of the lines), it broadcasts the data to all connected clients.
+
+Client Side:
+
+-The WhiteboardClient application creates a JavaFX canvas where users can draw.
+-When a user draws, the client sends the drawing coordinates (start and end points) to the server.
+-The server then broadcasts this data to all connected clients, allowing them to see the drawing in real-time.
