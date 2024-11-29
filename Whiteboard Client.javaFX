@@ -1,0 +1,93 @@
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.*;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+
+import java.io.*;
+import java.net.*;
+
+public class WhiteboardClient extends Application {
+    private static final String SERVER_ADDRESS = "localhost"; // Use the server's IP address
+    private static final int SERVER_PORT = 12345;
+
+    private Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private Canvas canvas;
+    private GraphicsContext gc;
+    private double lastX, lastY;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+        out = new PrintWriter(socket.getOutputStream(), true);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+        canvas = new Canvas(800, 600);
+        gc = canvas.getGraphicsContext2D();
+
+        gc.setLineWidth(2);
+        gc.setStroke(Color.BLACK);
+
+        canvas.setOnMousePressed(e -> {
+            lastX = e.getX();
+            lastY = e.getY();
+        });
+
+        canvas.setOnMouseDragged(e -> {
+            gc.strokeLine(lastX, lastY, e.getX(), e.getY());
+            lastX = e.getX();
+            lastY = e.getY();
+
+            // Send drawing data to the server
+            sendDrawingData(lastX, lastY, e.getX(), e.getY());
+        });
+
+        VBox root = new VBox();
+        root.getChildren().add(canvas);
+
+        // Set up a simple UI with buttons
+        Button clearButton = new Button("Clear Board");
+        clearButton.setOnAction(e -> gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight()));
+        
+        root.getChildren().add(clearButton);
+
+        Scene scene = new Scene(root, 800, 650);
+        primaryStage.setTitle("Collaborative Whiteboard");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        // Start listening for messages from the server
+        listenForMessages();
+    }
+
+    private void sendDrawingData(double startX, double startY, double endX, double endY) {
+        String drawingData = startX + "," + startY + "," + endX + "," + endY;
+        out.println(drawingData);
+    }
+
+    private void listenForMessages() {
+        new Thread(() -> {
+            try {
+                String message;
+                while ((message = in.readLine()) != null) {
+                    String[] coordinates = message.split(",");
+                    double startX = Double.parseDouble(coordinates[0]);
+                    double startY = Double.parseDouble(coordinates[1]);
+                    double endX = Double.parseDouble(coordinates[2]);
+                    double endY = Double.parseDouble(coordinates[3]);
+                    gc.strokeLine(startX, startY, endX, endY);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+}
